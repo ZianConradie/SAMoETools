@@ -10,7 +10,19 @@
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <header class="banner">SA MoE Tools</header>
+  <header class="banner">
+    <div class="banner-left">
+      <label class="theme-toggle">
+        <input id="theme-toggle" type="checkbox" />
+        <span>Dark</span>
+      </label>
+    </div>
+    <div class="banner-center">
+      <span class="banner-title">SA MoE Tools</span>
+      <span class="banner-version">v0.2.0</span>
+    </div>
+    <div class="banner-right"></div>
+  </header>
   <main class="split">
     <section class="panel left">
       <h1>South Africa Fundraiser</h1>
@@ -23,6 +35,10 @@
         <input id="fundraiser-target" type="number" min="1" step="1" value="1000" />
       </div>
       <button type="button" onclick="Fundraiser()">Refresh</button>
+      <div class="progress" aria-hidden="true">
+        <div id="fundraiser-progress" class="progress-bar"></div>
+        <span id="fundraiser-progress-text" class="progress-text"></span>
+      </div>
       <p id="fundraiser-status" class="status"></p>
       <pre id="fundraiser-output" class="output"></pre>
       <div class="chart-wrap">
@@ -30,7 +46,47 @@
       </div>
     </section>
     <section class="panel right">
-      <!-- Right side content goes here -->
+      <h1>Income Data</h1>
+      <div class="control">
+        <label for="income-weeks">Weeks Back (default 10)</label>
+        <input id="income-weeks" type="number" min="1" step="1" value="10" />
+      </div>
+      <button type="button" onclick="Income()">Refresh</button>
+      <div class="progress-stack">
+        <div class="progress-row">
+          <span class="progress-label">applicationFee</span>
+          <div class="progress">
+            <div id="income-progress-applicationFee" class="progress-bar"></div>
+            <span id="income-progress-text-applicationFee" class="progress-text"></span>
+          </div>
+        </div>
+        <div class="progress-row">
+          <span class="progress-label">trading</span>
+          <div class="progress">
+            <div id="income-progress-trading" class="progress-bar"></div>
+            <span id="income-progress-text-trading" class="progress-text"></span>
+          </div>
+        </div>
+        <div class="progress-row">
+          <span class="progress-label">itemMarket</span>
+          <div class="progress">
+            <div id="income-progress-itemMarket" class="progress-bar"></div>
+            <span id="income-progress-text-itemMarket" class="progress-text"></span>
+          </div>
+        </div>
+        <div class="progress-row">
+          <span class="progress-label">donation</span>
+          <div class="progress">
+            <div id="income-progress-donation" class="progress-bar"></div>
+            <span id="income-progress-text-donation" class="progress-text"></span>
+          </div>
+        </div>
+      </div>
+      <p id="income-status" class="status"></p>
+      <pre id="income-output" class="output"></pre>
+      <div class="chart-wrap">
+        <canvas id="income-chart"></canvas>
+      </div>
     </section>
   </main>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
