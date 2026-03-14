@@ -24,9 +24,12 @@ document.addEventListener("DOMContentLoaded", () => {
   if (!toggle) return;
 
   const stored = localStorage.getItem("theme");
-  if (stored === "dark") {
+  if (stored === "dark" || stored === null) {
     document.body.classList.add("dark");
     toggle.checked = true;
+    if (stored === null) {
+      localStorage.setItem("theme", "dark");
+    }
   }
 
   toggle.addEventListener("change", () => {
@@ -36,6 +39,13 @@ document.addEventListener("DOMContentLoaded", () => {
     } else {
       document.body.classList.remove("dark");
       localStorage.setItem("theme", "light");
+    }
+    if (incomeChart) {
+      const totalDataset = incomeChart.data.datasets.find((ds) => ds.label === "total");
+      if (totalDataset) {
+        totalDataset.borderColor = document.body.classList.contains("dark") ? "#ffffff" : "#111111";
+      }
+      incomeChart.update();
     }
   });
 });
@@ -634,7 +644,7 @@ function Income() {
           label: "total",
           data: weeklyIncomeTotal,
           type: "line",
-          borderColor: "#111111",
+          borderColor: document.body.classList.contains("dark") ? "#ffffff" : "#111111",
           borderWidth: 2,
           fill: false,
           tension: 0.2
