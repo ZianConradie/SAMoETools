@@ -19,8 +19,24 @@ const TRANSACTION_TYPES = [
   "donation"
 ];
 
+window.firebaseConfig = window.firebaseConfig || {
+  apiKey: "AIzaSyAlLht5HmdCwGp_97CLDvU7bxDBsXewAVE",
+  authDomain: "samoetools.firebaseapp.com",
+  projectId: "samoetools",
+  storageBucket: "samoetools.firebasestorage.app",
+  messagingSenderId: "301810333739",
+  appId: "1:301810333739:web:4796d62c6a578018c5526e",
+  measurementId: "G-SPHB07RM2Y"
+};
+
+const todoItems = [];
+let todoDb = null;
+let todoUnsub = null;
+const TODO_BYPASS_ACCESS = true;
+
 document.addEventListener("DOMContentLoaded", () => {
   const toggle = document.getElementById("theme-toggle");
+  const todoInput = document.getElementById("todo-text");
   if (!toggle) return;
 
   const stored = localStorage.getItem("theme");
@@ -48,7 +64,204 @@ document.addEventListener("DOMContentLoaded", () => {
       incomeChart.update();
     }
   });
+
+  if (todoInput) {
+    todoInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        addTodo();
+      }
+    });
+  }
+
+  initTodoSync();
+
+  const todoList = document.getElementById("todo-list");
+  if (todoList) {
+    todoList.addEventListener("change", (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLSelectElement)) return;
+      const itemId = target.dataset.id;
+      const item = todoItems.find((t) => t.id === itemId);
+      if (!item || !todoDb) return;
+      if (!TestForAccess("Guest")) return;
+      todoDb
+        .collection("todos")
+        .doc(itemId)
+        .update({
+          status: target.value,
+          completedAt:
+            target.value === "done"
+              ? firebase.firestore.FieldValue.serverTimestamp()
+              : null
+        })
+        .catch(() => {});
+    });
+
+    todoList.addEventListener("click", (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLButtonElement)) return;
+      if (target.dataset.action !== "delete") return;
+      const itemId = target.dataset.id;
+      if (!todoDb) return;
+      if (!TestForAccess("Guest")) return;
+      todoDb
+        .collection("todos")
+        .doc(itemId)
+        .delete()
+        .catch(() => {});
+    });
+  }
 });
+
+function initTodoSync() {
+  const status = document.getElementById("todo-status-text");
+  const config = window.firebaseConfig;
+
+  if (!config || !window.firebase) {
+    if (status) {
+      status.textContent = "Firebase not configured yet. Add firebaseConfig in scripts.js.";
+    }
+    return;
+  }
+
+  if (!firebase.apps.length) {
+    firebase.initializeApp(config);
+  }
+  todoDb = firebase.firestore();
+
+  if (todoUnsub) {
+    todoUnsub();
+  }
+
+  todoUnsub = todoDb
+    .collection("todos")
+    .orderBy("createdAt", "desc")
+    .onSnapshot(
+      (snapshot) => {
+        todoItems.length = 0;
+        const now = Date.now();
+        const weekMs = 7 * 24 * 60 * 60 * 1000;
+        snapshot.forEach((doc) => {
+          const data = doc.data() || {};
+          const completedAtRaw = data.completedAt || null;
+          const completedAt =
+            completedAtRaw && typeof completedAtRaw.toDate === "function"
+              ? completedAtRaw.toDate()
+              : completedAtRaw instanceof Date
+                ? completedAtRaw
+                : null;
+
+          if (data.status === "done") {
+            if (!completedAtRaw) {
+              todoDb
+                .collection("todos")
+                .doc(doc.id)
+                .update({ completedAt: firebase.firestore.FieldValue.serverTimestamp() })
+                .catch(() => {});
+            } else if (completedAt && now - completedAt.getTime() > weekMs) {
+              todoDb
+                .collection("todos")
+                .doc(doc.id)
+                .delete()
+                .catch(() => {});
+              return;
+            }
+          }
+
+          todoItems.push({
+            id: doc.id,
+            text: data.text || "",
+            status: data.status || "todo"
+          });
+        });
+        if (status) status.textContent = "Synced.";
+        renderTodoList();
+      },
+      (err) => {
+        if (status) status.textContent = `Sync error: ${err.message}`;
+      }
+    );
+}
+
+function TestForAccess(argument1) {
+  if (TODO_BYPASS_ACCESS) return true;
+  if (argument1 === "Admin") return true;
+  return false;
+}
+
+function addTodo() {
+  const input = document.getElementById("todo-text");
+  const statusSelect = document.getElementById("todo-status");
+  const status = document.getElementById("todo-status-text");
+  if (!input) return;
+
+  const text = input.value.trim();
+  if (!text) return;
+
+  const nextStatus = (statusSelect && statusSelect.value) || "todo";
+
+  if (!todoDb) {
+    if (status) status.textContent = "Firebase not configured.";
+    return;
+  }
+  if (!TestForAccess("Guest")) {
+    if (status) status.textContent = "Access denied.";
+    return;
+  }
+
+  todoDb
+    .collection("todos")
+    .add({
+      text,
+      status: nextStatus,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      completedAt:
+        nextStatus === "done"
+          ? firebase.firestore.FieldValue.serverTimestamp()
+          : null
+    })
+    .then(() => {
+      input.value = "";
+    })
+    .catch((err) => {
+      if (status) status.textContent = `Add failed: ${err.message}`;
+    });
+}
+
+function renderTodoList() {
+  const list = document.getElementById("todo-list");
+  if (!list) return;
+
+  list.innerHTML = "";
+  for (const item of todoItems) {
+    const li = document.createElement("li");
+    li.className = `todo-item ${item.status}`;
+
+    const text = document.createElement("span");
+    text.className = "todo-text";
+    text.textContent = item.text;
+
+    const select = document.createElement("select");
+    select.dataset.id = item.id;
+    select.innerHTML = `
+      <option value="todo">To Do</option>
+      <option value="in-progress">In Progress</option>
+      <option value="done">Done</option>
+    `;
+    select.value = item.status;
+
+    const del = document.createElement("button");
+    del.type = "button";
+    del.dataset.action = "delete";
+    del.dataset.id = item.id;
+    del.textContent = "Delete";
+
+    li.appendChild(text);
+    li.appendChild(select);
+    li.appendChild(del);
+    list.appendChild(li);
+  }
+}
 
 function parseCursor(cursorStr) {
   if (!cursorStr) return null;

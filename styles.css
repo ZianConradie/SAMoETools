@@ -120,6 +120,108 @@ body.dark .progress {
   background: #1b2430;
 }
 
+.todo-board {
+  max-width: 960px;
+  margin: 20px auto 0 auto;
+  padding: 0 24px;
+  text-align: center;
+}
+
+.todo-board h2 {
+  margin: 0 0 12px 0;
+  font-size: 20px;
+}
+
+.todo-board .status {
+  margin: 6px 0 10px 0;
+}
+
+.todo-input {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 12px;
+}
+
+.todo-input input,
+.todo-input select {
+  padding: 8px 10px;
+  font-size: 14px;
+  border: 1px solid #d6d6d6;
+  border-radius: 6px;
+}
+
+.todo-input button {
+  padding: 9px 14px;
+  font-size: 14px;
+  border: 0;
+  border-radius: 6px;
+  background: #1b6ef3;
+  color: #ffffff;
+  cursor: pointer;
+}
+
+.todo-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 auto;
+  display: grid;
+  gap: 8px;
+  max-width: 720px;
+}
+
+.todo-item {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 8px;
+  align-items: center;
+  background: #f5f7fb;
+  border: 1px solid #e3e7f3;
+  border-radius: 8px;
+  padding: 8px 10px;
+  text-align: left;
+}
+
+.todo-item select {
+  padding: 6px 8px;
+  font-size: 12px;
+  border-radius: 6px;
+  border: 1px solid #d6d6d6;
+}
+
+.todo-item button {
+  padding: 6px 10px;
+  font-size: 12px;
+  border: 0;
+  border-radius: 6px;
+  background: #e24b5b;
+  color: #ffffff;
+  cursor: pointer;
+}
+
+.todo-item.done {
+  opacity: 0.7;
+}
+
+.todo-item.done .todo-text {
+  text-decoration: line-through;
+}
+
+body.dark .todo-item {
+  background: #151a20;
+  border-color: #263041;
+}
+
+body.dark .todo-input input,
+body.dark .todo-input select,
+body.dark .todo-item select {
+  background: #0f141a;
+  color: #e8edf5;
+  border-color: #263041;
+}
+
 .split {
   min-height: calc(100vh - 52px);
   display: flex;
@@ -283,6 +385,10 @@ button {
   .panel.right {
     border-bottom: none;
   }
+
+  .todo-board {
+    padding: 0 16px;
+  }
 }
 
 @media (max-width: 600px) {
@@ -312,5 +418,13 @@ button {
   #fundraiser-chart,
   #income-chart {
     height: 260px;
+  }
+
+  .todo-input {
+    grid-template-columns: 1fr;
+  }
+
+  .todo-item {
+    grid-template-columns: 1fr;
   }
 }

@@ -19,10 +19,24 @@
     </div>
     <div class="banner-center">
       <span class="banner-title">SA MoE Tools</span>
-      <span class="banner-version">v0.2.1</span>
+      <span class="banner-version">v0.3.0</span>
     </div>
     <div class="banner-right"></div>
   </header>
+  <section class="todo-board">
+    <h2>TODO List</h2>
+    <div class="todo-input">
+      <input id="todo-text" type="text" placeholder="Add a task..." />
+      <select id="todo-status">
+        <option value="todo">To Do</option>
+        <option value="in-progress">In Progress</option>
+        <option value="done">Done</option>
+      </select>
+      <button type="button" onclick="addTodo()">Add</button>
+    </div>
+    <p id="todo-status-text" class="status"></p>
+    <ul id="todo-list" class="todo-list"></ul>
+  </section>
   <main class="split">
     <section class="panel left">
       <h1>South Africa Fundraiser</h1>
@@ -91,6 +105,8 @@
   </main>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
   <script src="scripts.js"></script>
 </body>
 </html>
