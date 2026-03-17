@@ -19,11 +19,32 @@
     </div>
     <div class="banner-center">
       <span class="banner-title">SA MoE Tools</span>
-      <span class="banner-version">v0.3.0</span>
+      <span class="banner-version">v0.4.1</span>
     </div>
     <div class="banner-right"></div>
   </header>
-  <section class="todo-board">
+  <section class="access-panel">
+    <div id="access-input" class="access-input">
+      <label for="official-key">Enter Key</label>
+      <input id="official-key" type="text" placeholder="Key" />
+      <button id="official-visibility" type="button" class="icon-button" aria-label="Show key">
+        <svg class="icon-eye icon-eye-open" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 5c5.5 0 9.5 4.2 10.9 6-1.4 1.8-5.4 6-10.9 6S2.5 12.8 1.1 11C2.5 9.2 6.5 5 12 5zm0 3.2a2.8 2.8 0 1 0 0 5.6 2.8 2.8 0 0 0 0-5.6z"/>
+        </svg>
+        <svg class="icon-eye icon-eye-closed" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M3.2 2.6 21.4 20.8l-1.4 1.4-2.3-2.3C16.1 20.6 14.1 21 12 21 6.5 21 2.5 16.8 1.1 15c.6-.8 1.8-2.3 3.6-3.6L1.8 8.5l1.4-1.4zM12 7c5.5 0 9.5 4.2 10.9 6-.5.7-1.4 1.8-2.7 2.9l-1.4-1.4c.9-.8 1.6-1.6 2-2.1-1.4-1.8-5.4-6-10.9-6-1.2 0-2.3.2-3.3.5L5 5.4C6.7 4.9 8.3 4.7 12 4.7z"/>
+        </svg>
+      </button>
+      <div class="tooltip-wrap">
+        <button id="official-help" type="button" class="icon-button" aria-label="Help">?</button>
+        <div class="tooltip-box" role="tooltip">
+          The key is used to verify that you are a trusted member to view important information that could be used by other countries, or to remove griefing on the website. If you do not know the Key, but think you should be able to view it, please contact the developer (@microlabsz) Donut Man, on discord.
+        </div>
+      </div>
+    </div>
+    <p id="official-status" class="status"></p>
+  </section>
+  <section id="todo-board" class="todo-board hidden">
     <h2>TODO List</h2>
     <div class="todo-input">
       <input id="todo-text" type="text" placeholder="Add a task..." />
@@ -47,6 +68,10 @@
       <div class="control">
         <label for="fundraiser-target">Target Amount (int)</label>
         <input id="fundraiser-target" type="number" min="1" step="1" value="1000" />
+      </div>
+      <div class="control">
+        <label for="fundraiser-exclude">Exclude Usernames (comma separated) (Also click on username on graph to exclude)</label>
+        <input id="fundraiser-exclude" type="text" placeholder="e.g. UserOne, UserTwo" />
       </div>
       <button type="button" onclick="Fundraiser()">Refresh</button>
       <div class="progress" aria-hidden="true">

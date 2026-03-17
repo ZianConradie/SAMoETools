@@ -127,6 +127,117 @@ body.dark .progress {
   text-align: center;
 }
 
+.access-panel {
+  max-width: 960px;
+  margin: 16px auto 0 auto;
+  padding: 0 24px;
+  display: grid;
+  gap: 6px;
+}
+
+.access-input {
+  display: grid;
+  grid-template-columns: auto 1fr auto auto;
+  align-items: center;
+  gap: 8px;
+}
+
+.access-input label {
+  font-size: 14px;
+  color: #444444;
+}
+
+.access-input input {
+  padding: 8px 10px;
+  font-size: 14px;
+  border: 1px solid #d6d6d6;
+  border-radius: 6px;
+}
+
+.access-input.key-hidden input {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.icon-button {
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  border: 1px solid #d6d6d6;
+  background: #ffffff;
+  color: #1b6ef3;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+
+.tooltip-wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.tooltip-box {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  width: min(360px, 70vw);
+  padding: 10px 12px;
+  background: #111111;
+  color: #ffffff;
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 1.4;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.2);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-6px);
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  z-index: 10;
+}
+
+.tooltip-wrap:hover .tooltip-box,
+.tooltip-wrap:focus-within .tooltip-box {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+.tooltip-box::after {
+  content: "";
+  position: absolute;
+  right: 10px;
+  top: -6px;
+  width: 12px;
+  height: 12px;
+  background: #111111;
+  transform: rotate(45deg);
+}
+
+.icon-eye {
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
+}
+
+.icon-eye-closed {
+  display: none;
+}
+
+.icon-button.is-hidden .icon-eye-open {
+  display: none;
+}
+
+.icon-button.is-hidden .icon-eye-closed {
+  display: block;
+}
+
+.hidden {
+  display: none !important;
+}
+
 .todo-board h2 {
   margin: 0 0 12px 0;
   font-size: 20px;
@@ -212,6 +323,28 @@ body.dark .progress {
 body.dark .todo-item {
   background: #151a20;
   border-color: #263041;
+}
+
+body.dark .access-input label {
+  color: #b2bdc9;
+}
+
+body.dark .access-input input {
+  background: #0f141a;
+  color: #e8edf5;
+  border-color: #263041;
+}
+
+body.dark .icon-button {
+  background: #0f141a;
+  border-color: #263041;
+  color: #e8edf5;
+}
+
+body.dark .tooltip-box,
+body.dark .tooltip-box::after {
+  background: #0f141a;
+  color: #e8edf5;
 }
 
 body.dark .todo-input input,
@@ -426,5 +559,14 @@ button {
 
   .todo-item {
     grid-template-columns: 1fr;
+  }
+
+  .access-input {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .icon-button {
+    justify-self: start;
   }
 }

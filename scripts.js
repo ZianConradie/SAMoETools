@@ -7,10 +7,13 @@ const COUNTRY_ID = "683ddd2c24b5a2e114af1612";
 const LIMIT = 100;
 const DEFAULT_TARGET_AMOUNT = 1000;
 const LEADERBOARD_SIZE = 10;
+const OFFICIAL_KEY = "MoE";
 
 const userCache = new Map();
 let fundraiserChart = null;
 let incomeChart = null;
+let Official = false;
+let todoSyncStarted = false;
 
 const TRANSACTION_TYPES = [
   "applicationFee",
@@ -18,6 +21,8 @@ const TRANSACTION_TYPES = [
   "itemMarket",
   "donation"
 ];
+
+const OFFICIAL_KEY_STORAGE = "official_key_cache";
 
 window.firebaseConfig = window.firebaseConfig || {
   apiKey: "AIzaSyAlLht5HmdCwGp_97CLDvU7bxDBsXewAVE",
@@ -37,6 +42,9 @@ const TODO_BYPASS_ACCESS = true;
 document.addEventListener("DOMContentLoaded", () => {
   const toggle = document.getElementById("theme-toggle");
   const todoInput = document.getElementById("todo-text");
+  const officialInput = document.getElementById("official-key");
+  const officialVisibility = document.getElementById("official-visibility");
+  const accessInput = document.getElementById("access-input");
   if (!toggle) return;
 
   const stored = localStorage.getItem("theme");
@@ -73,7 +81,35 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  initTodoSync();
+  if (officialInput) {
+    const cachedKey = localStorage.getItem(OFFICIAL_KEY_STORAGE);
+    if (cachedKey !== null) {
+      officialInput.value = cachedKey;
+    }
+    officialInput.addEventListener("input", () => {
+      localStorage.setItem(OFFICIAL_KEY_STORAGE, officialInput.value);
+      evaluateOfficialKey();
+    });
+  }
+
+  const setKeyHidden = (hidden) => {
+    if (accessInput) accessInput.classList.toggle("key-hidden", hidden);
+    if (officialVisibility) {
+      officialVisibility.classList.toggle("is-hidden", hidden);
+      officialVisibility.setAttribute("aria-label", hidden ? "Show key" : "Hide key");
+    }
+  };
+
+  setKeyHidden(false);
+
+  if (officialVisibility && officialInput) {
+    officialVisibility.addEventListener("click", () => {
+      const isHidden = accessInput ? accessInput.classList.contains("key-hidden") : false;
+      setKeyHidden(!isHidden);
+    });
+  }
+
+  evaluateOfficialKey();
 
   const todoList = document.getElementById("todo-list");
   if (todoList) {
@@ -112,6 +148,30 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 });
+
+function setOfficialState(isOfficial) {
+  Official = isOfficial;
+  const status = document.getElementById("official-status");
+  const todoBoard = document.getElementById("todo-board");
+
+  if (Official) {
+    if (status) status.textContent = "Confirmed. Welcome.";
+    if (todoBoard) todoBoard.classList.remove("hidden");
+    if (!todoSyncStarted) {
+      initTodoSync();
+      todoSyncStarted = true;
+    }
+  } else {
+    if (status) status.textContent = "incorrect key.";
+    if (todoBoard) todoBoard.classList.add("hidden");
+  }
+}
+
+function evaluateOfficialKey() {
+  const input = document.getElementById("official-key");
+  const keyValue = input ? input.value : "";
+  setOfficialState(keyValue === OFFICIAL_KEY);
+}
 
 function initTodoSync() {
   const status = document.getElementById("todo-status-text");
@@ -281,6 +341,16 @@ function formatMoney(value) {
   return Number(value || 0).toFixed(2);
 }
 
+function parseExcludedUsernames(raw) {
+  if (!raw) return new Set();
+  const items = raw
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .map((item) => item.toLowerCase());
+  return new Set(items);
+}
+
 async function getUsername(userId) {
   if (!userId) return "unknown";
   if (userCache.has(userId)) return userCache.get(userId);
@@ -379,6 +449,7 @@ async function Fundraiser() {
   const chartCanvas = document.getElementById("fundraiser-chart");
   const startInput = document.getElementById("fundraiser-start");
   const targetInput = document.getElementById("fundraiser-target");
+  const excludeInput = document.getElementById("fundraiser-exclude");
   const progressBar = document.getElementById("fundraiser-progress");
   const progressText = document.getElementById("fundraiser-progress-text");
 
@@ -530,7 +601,18 @@ async function Fundraiser() {
     if (progressText) progressText.textContent = "Estimate: 100%";
     if (output) output.textContent = lines.join("\n");
 
-    if (chartCanvas && topIds.length > 0 && window.Chart) {
+    const excludedNames = parseExcludedUsernames(excludeInput && excludeInput.value);
+    const usernameById = new Map();
+    for (const donorId of topIds) {
+      usernameById.set(donorId, await getUsername(donorId));
+    }
+
+    const visibleTopIds = topIds.filter((donorId) => {
+      const username = usernameById.get(donorId) || "";
+      return !excludedNames.has(username.toLowerCase());
+    });
+
+    if (chartCanvas && visibleTopIds.length > 0 && window.Chart) {
       const series = new Map();
       const running = new Map();
       const palette = [
@@ -546,7 +628,7 @@ async function Fundraiser() {
         "#7f8c8d"
       ];
 
-      for (const donorId of topIds) {
+      for (const donorId of visibleTopIds) {
         series.set(donorId, [{ x: startDatetime, y: 0 }]);
         running.set(donorId, 0);
       }
@@ -566,9 +648,9 @@ async function Fundraiser() {
       }
 
       const datasets = [];
-      for (let i = 0; i < topIds.length; i += 1) {
-        const donorId = topIds[i];
-        const label = await getUsername(donorId);
+      for (let i = 0; i < visibleTopIds.length; i += 1) {
+        const donorId = visibleTopIds[i];
+        const label = usernameById.get(donorId) || (await getUsername(donorId));
         const data = series.get(donorId) || [];
         const isWinner = winnerId && donorId === winnerId && winnerReachedAt;
         const baseColor = palette[i % palette.length];
