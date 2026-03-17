@@ -1,0 +1,7 @@
+name = "war-era-tools-proxy"
+main = "worker.js"
+compatibility_date = "2026-03-01"
+
+kv_namespaces = [
+  { binding = "TODOS", id = "2fdf6bbef4464014a90186f00ce5e82c" }
+]

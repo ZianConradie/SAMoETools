@@ -1,13 +1,11 @@
-const TRANSACTIONS_URL = "https://api2.warera.io/trpc/transaction.getPaginatedTransactions";
-const USER_URL = "https://api2.warera.io/trpc/user.getUserLite";
-const API_KEY = "wae_36ef4d1a77db9a232e60b6cc6fcdbc96100e156d0fa7888a95d21a99d9376517";
+const WARERA_PROXY_URL =
+  window.WARERA_PROXY_URL || "https://war-era-tools-proxy.samoetools.workers.dev";
 
 const DEFAULT_START_DATE = "2026-03-11";
 const COUNTRY_ID = "683ddd2c24b5a2e114af1612";
 const LIMIT = 100;
 const DEFAULT_TARGET_AMOUNT = 1000;
 const LEADERBOARD_SIZE = 10;
-const OFFICIAL_KEY = "MoE";
 
 const userCache = new Map();
 let fundraiserChart = null;
@@ -24,20 +22,8 @@ const TRANSACTION_TYPES = [
 
 const OFFICIAL_KEY_STORAGE = "official_key_cache";
 
-window.firebaseConfig = window.firebaseConfig || {
-  apiKey: "AIzaSyAlLht5HmdCwGp_97CLDvU7bxDBsXewAVE",
-  authDomain: "samoetools.firebaseapp.com",
-  projectId: "samoetools",
-  storageBucket: "samoetools.firebasestorage.app",
-  messagingSenderId: "301810333739",
-  appId: "1:301810333739:web:4796d62c6a578018c5526e",
-  measurementId: "G-SPHB07RM2Y"
-};
-
 const todoItems = [];
-let todoDb = null;
-let todoUnsub = null;
-const TODO_BYPASS_ACCESS = true;
+const TODO_BYPASS_ACCESS = false;
 
 document.addEventListener("DOMContentLoaded", () => {
   const toggle = document.getElementById("theme-toggle");
@@ -117,20 +103,9 @@ document.addEventListener("DOMContentLoaded", () => {
       const target = event.target;
       if (!(target instanceof HTMLSelectElement)) return;
       const itemId = target.dataset.id;
-      const item = todoItems.find((t) => t.id === itemId);
-      if (!item || !todoDb) return;
+      if (!itemId) return;
       if (!TestForAccess("Guest")) return;
-      todoDb
-        .collection("todos")
-        .doc(itemId)
-        .update({
-          status: target.value,
-          completedAt:
-            target.value === "done"
-              ? firebase.firestore.FieldValue.serverTimestamp()
-              : null
-        })
-        .catch(() => {});
+      updateTodoStatus(itemId, target.value);
     });
 
     todoList.addEventListener("click", (event) => {
@@ -138,13 +113,9 @@ document.addEventListener("DOMContentLoaded", () => {
       if (!(target instanceof HTMLButtonElement)) return;
       if (target.dataset.action !== "delete") return;
       const itemId = target.dataset.id;
-      if (!todoDb) return;
+      if (!itemId) return;
       if (!TestForAccess("Guest")) return;
-      todoDb
-        .collection("todos")
-        .doc(itemId)
-        .delete()
-        .catch(() => {});
+      deleteTodoItem(itemId);
     });
   }
 });
@@ -158,95 +129,109 @@ function setOfficialState(isOfficial) {
     if (status) status.textContent = "Confirmed. Welcome.";
     if (todoBoard) todoBoard.classList.remove("hidden");
     if (!todoSyncStarted) {
-      initTodoSync();
+      startTodoSync();
       todoSyncStarted = true;
     }
   } else {
     if (status) status.textContent = "incorrect key.";
     if (todoBoard) todoBoard.classList.add("hidden");
+    stopTodoSync();
+    todoSyncStarted = false;
+    todoItems.length = 0;
+    renderTodoList();
   }
 }
 
-function evaluateOfficialKey() {
+let officialCheckId = 0;
+
+async function evaluateOfficialKey() {
   const input = document.getElementById("official-key");
   const keyValue = input ? input.value : "";
-  setOfficialState(keyValue === OFFICIAL_KEY);
-}
+  const status = document.getElementById("official-status");
+  const runId = (officialCheckId += 1);
 
-function initTodoSync() {
-  const status = document.getElementById("todo-status-text");
-  const config = window.firebaseConfig;
-
-  if (!config || !window.firebase) {
-    if (status) {
-      status.textContent = "Firebase not configured yet. Add firebaseConfig in scripts.js.";
-    }
+  if (!keyValue) {
+    setOfficialState(false);
     return;
   }
 
-  if (!firebase.apps.length) {
-    firebase.initializeApp(config);
+  if (status) status.textContent = "Checking key...";
+
+  try {
+    const result = await postWarera("official", { key: keyValue });
+    if (runId !== officialCheckId) return;
+    setOfficialState(Boolean(result && result.ok));
+  } catch (err) {
+    if (runId !== officialCheckId) return;
+    setOfficialState(false);
+    if (status) status.textContent = "Key check failed.";
   }
-  todoDb = firebase.firestore();
+}
 
-  if (todoUnsub) {
-    todoUnsub();
+function getOfficialKeyInput() {
+  const input = document.getElementById("official-key");
+  return input ? input.value : "";
+}
+
+let todoSyncTimer = null;
+
+function startTodoSync() {
+  if (todoSyncTimer) return;
+  fetchTodos();
+  todoSyncTimer = setInterval(fetchTodos, 15000);
+}
+
+function stopTodoSync() {
+  if (todoSyncTimer) {
+    clearInterval(todoSyncTimer);
+    todoSyncTimer = null;
   }
+}
 
-  todoUnsub = todoDb
-    .collection("todos")
-    .orderBy("createdAt", "desc")
-    .onSnapshot(
-      (snapshot) => {
-        todoItems.length = 0;
-        const now = Date.now();
-        const weekMs = 7 * 24 * 60 * 60 * 1000;
-        snapshot.forEach((doc) => {
-          const data = doc.data() || {};
-          const completedAtRaw = data.completedAt || null;
-          const completedAt =
-            completedAtRaw && typeof completedAtRaw.toDate === "function"
-              ? completedAtRaw.toDate()
-              : completedAtRaw instanceof Date
-                ? completedAtRaw
-                : null;
+async function fetchTodos() {
+  if (!Official) return;
+  const status = document.getElementById("todo-status-text");
+  const key = getOfficialKeyInput();
+  try {
+    const data = await postWarera("todo.list", { key });
+    const items = Array.isArray(data && data.items) ? data.items : [];
+    todoItems.length = 0;
+    for (const item of items) {
+      todoItems.push({
+        id: item.id,
+        text: item.text || "",
+        status: item.status || "todo"
+      });
+    }
+    if (status) status.textContent = "Synced.";
+    renderTodoList();
+  } catch (err) {
+    if (status) status.textContent = `Sync error: ${err.message}`;
+  }
+}
 
-          if (data.status === "done") {
-            if (!completedAtRaw) {
-              todoDb
-                .collection("todos")
-                .doc(doc.id)
-                .update({ completedAt: firebase.firestore.FieldValue.serverTimestamp() })
-                .catch(() => {});
-            } else if (completedAt && now - completedAt.getTime() > weekMs) {
-              todoDb
-                .collection("todos")
-                .doc(doc.id)
-                .delete()
-                .catch(() => {});
-              return;
-            }
-          }
+async function createTodo(text, statusValue) {
+  const key = getOfficialKeyInput();
+  await postWarera("todo.add", { key, text, status: statusValue });
+  await fetchTodos();
+}
 
-          todoItems.push({
-            id: doc.id,
-            text: data.text || "",
-            status: data.status || "todo"
-          });
-        });
-        if (status) status.textContent = "Synced.";
-        renderTodoList();
-      },
-      (err) => {
-        if (status) status.textContent = `Sync error: ${err.message}`;
-      }
-    );
+async function updateTodoStatus(id, statusValue) {
+  const key = getOfficialKeyInput();
+  await postWarera("todo.update", { key, id, status: statusValue });
+  await fetchTodos();
+}
+
+async function deleteTodoItem(id) {
+  const key = getOfficialKeyInput();
+  await postWarera("todo.delete", { key, id });
+  await fetchTodos();
 }
 
 function TestForAccess(argument1) {
   if (TODO_BYPASS_ACCESS) return true;
-  if (argument1 === "Admin") return true;
-  return false;
+  if (argument1 === "Admin") return Official;
+  return Official;
 }
 
 function addTodo() {
@@ -260,26 +245,12 @@ function addTodo() {
 
   const nextStatus = (statusSelect && statusSelect.value) || "todo";
 
-  if (!todoDb) {
-    if (status) status.textContent = "Firebase not configured.";
-    return;
-  }
   if (!TestForAccess("Guest")) {
     if (status) status.textContent = "Access denied.";
     return;
   }
 
-  todoDb
-    .collection("todos")
-    .add({
-      text,
-      status: nextStatus,
-      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-      completedAt:
-        nextStatus === "done"
-          ? firebase.firestore.FieldValue.serverTimestamp()
-          : null
-    })
+  createTodo(text, nextStatus)
     .then(() => {
       input.value = "";
     })
@@ -351,26 +322,32 @@ function parseExcludedUsernames(raw) {
   return new Set(items);
 }
 
+async function postWarera(endpoint, input) {
+  if (WARERA_PROXY_URL.includes("YOUR_WORKER_SUBDOMAIN")) {
+    throw new Error("War Era proxy URL is not configured.");
+  }
+
+  const response = await fetch(WARERA_PROXY_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ endpoint, input })
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`Proxy failed (${response.status}): ${text}`);
+  }
+
+  return response.json();
+}
+
 async function getUsername(userId) {
   if (!userId) return "unknown";
   if (userCache.has(userId)) return userCache.get(userId);
 
   let username = userId;
   try {
-    const response = await fetch(USER_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-API-Key": API_KEY
-      },
-      body: JSON.stringify({ userId })
-    });
-
-    if (!response.ok) {
-      throw new Error(`User lookup failed (${response.status})`);
-    }
-
-    const body = await response.json();
+    const body = await postWarera("user", { userId });
     const data = body?.result?.data || {};
     username = data.username || userId;
   } catch (err) {
@@ -398,19 +375,7 @@ async function fetchTransactions(startDatetime, expectedPages, onProgress) {
       inputPayload.cursor = cursor;
     }
 
-    const params = new URLSearchParams({
-      input: JSON.stringify(inputPayload)
-    });
-
-    const response = await fetch(`${TRANSACTIONS_URL}?${params.toString()}`, {
-      headers: { "X-API-Key": API_KEY }
-    });
-
-    if (!response.ok) {
-      throw new Error(`Transaction fetch failed (${response.status})`);
-    }
-
-    const body = await response.json();
+    const body = await postWarera("transaction", inputPayload);
     const data = body?.result?.data || {};
     const payload = typeof data === "object" && data !== null ? (data.json || data) : data;
     const items = payload?.items || [];
@@ -833,16 +798,7 @@ function Income() {
       };
       if (cursor) payload.cursor = cursor;
 
-      const params = new URLSearchParams({ input: JSON.stringify(payload) });
-      const response = await fetch(`${TRANSACTIONS_URL}?${params.toString()}`, {
-        headers: { "X-API-Key": API_KEY }
-      });
-
-      if (!response.ok) {
-        throw new Error(`Income fetch failed (${txType}, ${response.status})`);
-      }
-
-      const data = await response.json();
+      const data = await postWarera("transaction", payload);
       const { items, nextCursor } = extractItems(data);
       itemsCollected.push(...items);
 
