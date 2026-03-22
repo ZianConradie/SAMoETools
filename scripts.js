@@ -601,7 +601,6 @@ async function Fundraiser() {
       for (const tx of chronologicalItems) {
         const createdAt = parseCreatedAt(tx?.createdAt);
         if (!createdAt) continue;
-        if (winnerReachedAt && createdAt > winnerReachedAt) break;
 
         const donorId = tx?.buyerId || "unknown";
         if (!series.has(donorId)) continue;
