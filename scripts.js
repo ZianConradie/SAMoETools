@@ -1,7 +1,7 @@
 const WARERA_PROXY_URL =
   window.WARERA_PROXY_URL || "https://war-era-tools-proxy.samoetools.workers.dev";
 
-const DEFAULT_START_DATE = "2026-03-11";
+const DEFAULT_START_DATE = "2026-03-25";
 const COUNTRY_ID = "683ddd2c24b5a2e114af1612";
 const LIMIT = 100;
 const DEFAULT_TARGET_AMOUNT = 1000;
